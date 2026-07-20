@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>سجل حضور الأساتذة</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+  :root{
+    --ink:#1f2a24;
+    --paper:#f6f3ea;
+    --stamp:#8a3b2b;
+    --stamp-soft:#c65f42;
+    --line:#c9c2ad;
+    --present:#2f6b4f;
+    --absent:#8a3b2b;
+    --card:#fffdf7;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:"Tahoma","Segoe UI",sans-serif;
+    min-height:100vh;
+  }
+  .register-header{
+    background:var(--ink);
+    color:var(--paper);
+    padding:22px 20px 26px;
+    position:relative;
+    overflow:hidden;
+  }
+  .register-header::after{
+    content:"";
+    position:absolute;
+    inset:0;
+    background:repeating-linear-gradient(135deg, rgba(246,243,234,0.04) 0 2px, transparent 2px 14px);
+  }
+  .register-header h1{
+    margin:0;
+    font-size:1.5rem;
+    letter-spacing:0.5px;
+    position:relative;
+  }
+  .register-header p{
+    margin:6px 0 0;
+    opacity:0.75;
+    font-size:0.85rem;
+    position:relative;
+  }
+  .tabs{
+    display:flex;
+    background:var(--ink);
+    position:relative;
+  }
+  .tab-btn{
+    flex:1;
+    padding:12px;
+    background:none;
+    border:none;
+    color:rgba(246,243,234,0.55);
+    font-size:0.95rem;
+    cursor:pointer;
+    border-bottom:3px solid transparent;
+    font-family:inherit;
+  }
+  .tab-btn.active{
+    color:var(--paper);
+    border-bottom-color:var(--stamp-soft);
+  }
+  main{
+    max-width:520px;
+    margin:0 auto;
+    padding:18px 16px 60px;
+  }
+  .view{display:none;}
+  .view.active{display:block;}
+
+  .status-toggle{
+    display:flex;
+    gap:10px;
+    margin-bottom:16px;
+  }
+  .status-toggle button{
+    flex:1;
+    padding:16px;
+    border-radius:10px;
+    border:2px solid var(--line);
+    background:var(--card);
+    font-size:1.05rem;
+    font-weight:bold;
+    cursor:pointer;
+    font-family:inherit;
+    color:var(--ink);
+    transition:transform 0.1s;
+  }
+  .status-toggle button:active{transform:scale(0.98);}
+  .status-toggle button[data-status="in"].selected{
+    background:var(--present);
+    border-color:var(--present);
+    color:var(--paper);
+  }
+  .status-toggle button[data-status="out"].selected{
+    background:var(--absent);
+    border-color:var(--absent);
+    color:var(--paper);
+  }
+
+  .scan-frame{
+    border:2px dashed var(--line);
+    border-radius:12px;
+    padding:10px;
+    background:var(--card);
+    margin-bottom:16px;
+  }
+  #reader{width:100%;border-radius:8px;overflow:hidden;}
+  .hint{
+    text-align:center;
+    color:#6b6455;
+    font-size:0.85rem;
+    padding:8px 0 0;
+  }
+  .disabled-note{
+    text-align:center;
+    padding:20px;
+    color:var(--stamp);
+    font-size:0.9rem;
+  }
+
+  .log-card{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:12px 14px;
+    margin-bottom:8px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+  }
+  .log-card .name{font-weight:bold;}
+  .log-card .time{font-size:0.8rem;color:#6b6455;}
+  .log-card .badge{
+    font-size:0.75rem;
+    padding:3px 10px;
+    border-radius:20px;
+    color:var(--paper);
+    font-weight:bold;
+  }
+  .badge.in{background:var(--present);}
+  .badge.out{background:var(--absent);}
+
+  .section-title{
+    font-size:0.95rem;
+    color:#6b6455;
+    margin:22px 0 8px;
+    border-bottom:1px solid var(--line);
+    padding-bottom:6px;
+  }
+
+  .teacher-form{
+    display:flex;
+    gap:8px;
+    margin-bottom:16px;
+  }
+  .teacher-form input{
+    flex:1;
+    padding:12px;
+    border:1px solid var(--line);
+    border-radius:8px;
+    font-family:inherit;
+    font-size:0.95rem;
+    background:var(--card);
+  }
+  .teacher-form button, .primary-btn{
+    padding:12px 18px;
+    background:var(--stamp);
+    color:var(--paper);
+    border:none;
+    border-radius:8px;
+    font-weight:bold;
+    cursor:pointer;
+    font-family:inherit;
+  }
+  .teacher-card{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:14px;
+    margin-bottom:10px;
+    display:flex;
+    align-items:center;
+    gap:14px;
+  }
+  .teacher-card .qr-box{
+    background:#fff;
+    padding:6px;
+    border-radius:6px;
+    flex-shrink:0;
+  }
+  .teacher-card .info{flex:1;}
+  .teacher-card .info .name{font-weight:bold;}
+  .teacher-card .info .code{font-size:0.8rem;color:#6b6455;}
+  .teacher-card .remove{
+    background:none;
+    border:none;
+    color:var(--stamp);
+    cursor:pointer;
+    font-size:0.85rem;
+  }
+
+  .export-row{
+    display:flex;
+    gap:8px;
+    margin-top:16px;
+  }
+  .export-row button{
+    flex:1;
+    padding:12px;
+    border:1px solid var(--line);
+    background:var(--card);
+    border-radius:8px;
+    font-family:inherit;
+    cursor:pointer;
+  }
+  .empty{
+    text-align:center;
+    color:#a39c8a;
+    padding:20px;
+    font-size:0.9rem;
+  }
+
+  #print-sheet{display:none;}
+
+  @media print{
+    .register-header, .tabs, .teacher-form, #print-codes-btn,
+    .status-toggle, .scan-frame, .section-title, #recent-scans,
+    #teacher-list, .export-row, #full-log{
+      display:none !important;
+    }
+    body{background:#fff;}
+    #print-sheet{
+      display:grid !important;
+      grid-template-columns:repeat(3, 1fr);
+      gap:16px;
+    }
+    .print-card{
+      border:1px dashed #999;
+      border-radius:8px;
+      padding:10px;
+      text-align:center;
+      break-inside:avoid;
+    }
+    .print-card .name{font-weight:bold;margin-top:6px;font-size:0.9rem;}
+    .print-card .code{font-size:0.7rem;color:#666;}
+
+    #print-sheet.log-mode{
+      display:block !important;
+    }
+    #print-sheet.log-mode table{
+      width:100%;
+      border-collapse:collapse;
+      font-size:0.85rem;
+    }
+    #print-sheet.log-mode th, #print-sheet.log-mode td{
+      border:1px solid #999;
+      padding:6px 8px;
+      text-align:right;
+    }
+    #print-sheet.log-mode h2{
+      font-size:1.1rem;
+      margin-bottom:10px;
+    }
+  }
+</style>
+</head>
+<body>
+
+<div class="register-header">
+  <h1>سجل حضور الأساتذة</h1>
+  <p>نسخة تجريبية — مسح رمز QR لتسجيل الحضور والانصراف</p>
+</div>
+
+<div class="tabs">
+  <button class="tab-btn active" data-view="scan">تسجيل الحضور</button>
+  <button class="tab-btn" data-view="teachers">إدارة الأساتذة</button>
+  <button class="tab-btn" data-view="log">السجل</button>
+</div>
+
+<main>
+
+  <!-- SCAN VIEW -->
+  <div class="view active" id="view-scan">
+    <div class="status-toggle">
+      <button data-status="in" id="btn-in">حضور</button>
+      <button data-status="out" id="btn-out">انصراف</button>
+    </div>
+
+    <div class="scan-frame">
+      <div id="reader"></div>
+      <div class="hint" id="scan-hint">اختر الحالة أعلاه، ثم امسح رمز الأستاذ</div>
+    </div>
+
+    <div class="section-title">آخر عمليات المسح</div>
+    <div id="recent-scans"></div>
+  </div>
+
+  <!-- TEACHERS VIEW -->
+  <div class="view" id="view-teachers">
+    <div class="teacher-form">
+      <input type="text" id="teacher-name-input" placeholder="اسم الأستاذ">
+      <button id="add-teacher-btn">إضافة</button>
+    </div>
+    <button class="primary-btn" id="print-codes-btn" style="width:100%;margin-bottom:14px;">طباعة كل الرموز</button>
+    <div id="teacher-list"></div>
+  </div>
+
+  <!-- PRINTABLE SHEET (hidden on screen, shown only when printing) -->
+  <div id="print-sheet"></div>
+
+  <!-- LOG VIEW -->
+  <div class="view" id="view-log">
+    <div id="full-log"></div>
+    <div class="export-row">
+      <button id="export-csv-btn">تنزيل CSV</button>
+      <button id="export-pdf-btn">تصدير PDF</button>
+      <button id="clear-log-btn">مسح السجل</button>
+    </div>
+  </div>
+
+</main>
+
+<script>
+// ---- Storage shim: use window.storage if present (Claude artifact preview),
+// otherwise fall back to localStorage (works on a real hosted site like GitHub Pages) ----
+if(!window.storage){
+  window.storage = {
+    get: async (key)=>{
+      const v = localStorage.getItem(key);
+      if(v === null) throw new Error("not found");
+      return { key, value: v };
+    },
+    set: async (key, value)=>{
+      localStorage.setItem(key, value);
+      return { key, value };
+    },
+    delete: async (key)=>{
+      localStorage.removeItem(key);
+      return { key, deleted: true };
+    }
+  };
+}
+
+// ---- State ----
+let teachers = [];       // [{id, name}]
+let attendanceLog = [];  // [{teacherId, name, status, timestamp}]
+let selectedStatus = null; // 'in' | 'out'
+let html5QrCode = null;
+let scannerRunning = false;
+
+const STORAGE_KEY_TEACHERS = "teachers-list";
+const STORAGE_KEY_LOG = "attendance-log";
+
+// ---- Persistence helpers ----
+async function loadState(){
+  try{
+    const t = await window.storage.get(STORAGE_KEY_TEACHERS, false);
+    teachers = t ? JSON.parse(t.value) : [];
+  }catch(e){ teachers = []; }
+  try{
+    const l = await window.storage.get(STORAGE_KEY_LOG, false);
+    attendanceLog = l ? JSON.parse(l.value) : [];
+  }catch(e){ attendanceLog = []; }
+}
+
+async function saveTeachers(){
+  try{ await window.storage.set(STORAGE_KEY_TEACHERS, JSON.stringify(teachers), false); }
+  catch(e){ console.error("save teachers failed", e); }
+}
+
+async function saveLog(){
+  try{ await window.storage.set(STORAGE_KEY_LOG, JSON.stringify(attendanceLog), false); }
+  catch(e){ console.error("save log failed", e); }
+}
+
+// ---- Tabs ----
+document.querySelectorAll(".tab-btn").forEach(btn=>{
+  btn.addEventListener("click", ()=>{
+    document.querySelectorAll(".tab-btn").forEach(b=>b.classList.remove("active"));
+    document.querySelectorAll(".view").forEach(v=>v.classList.remove("active"));
+    btn.classList.add("active");
+    document.getElementById("view-"+btn.dataset.view).classList.add("active");
+    if(btn.dataset.view === "log") renderFullLog();
+    if(btn.dataset.view === "teachers") renderTeacherList();
+  });
+});
+
+// ---- Status toggle ----
+document.getElementById("btn-in").addEventListener("click", ()=>selectStatus("in"));
+document.getElementById("btn-out").addEventListener("click", ()=>selectStatus("out"));
+
+function selectStatus(status){
+  selectedStatus = status;
+  document.getElementById("btn-in").classList.toggle("selected", status==="in");
+  document.getElementById("btn-out").classList.toggle("selected", status==="out");
+  document.getElementById("scan-hint").textContent =
+    status === "in" ? "جاهز لتسجيل الحضور — امسح رمز الأستاذ" : "جاهز لتسجيل الانصراف — امسح رمز الأستاذ";
+}
+
+// ---- QR scanning ----
+function initScanner(){
+  html5QrCode = new Html5Qrcode("reader");
+  const config = { fps: 10, qrbox: { width: 220, height: 220 } };
+
+  Html5Qrcode.getCameras().then(cams => {
+    if(!cams || !cams.length){
+      showScannerDisabled("لم يتم العثور على كاميرا. جرّب فتح هذه الصفحة على متصفح الهاتف مباشرة (وليس داخل معاينة).");
+      return;
+    }
+    html5QrCode.start(
+      { facingMode: "environment" },
+      config,
+      onScanSuccess,
+      ()=>{} // ignore per-frame scan errors
+    ).then(()=>{ scannerRunning = true; })
+     .catch(err=>{
+       showScannerDisabled("تعذر تشغيل الكاميرا (قد تحتاج صلاحية الكاميرا، أو فتح الصفحة عبر رابط مباشر). التفاصيل: " + err);
+     });
+  }).catch(err=>{
+    showScannerDisabled("تعذر الوصول إلى الكاميرا في هذه المعاينة. افتح الملف في متصفح الهاتف مباشرة لتجربة المسح الفعلي.");
+  });
+}
+
+function showScannerDisabled(message){
+  document.getElementById("reader").innerHTML =
+    '<div class="disabled-note">' + message + '</div>';
+}
+
+let lastScanCode = null;
+let lastScanTime = 0;
+
+function onScanSuccess(decodedText){
+  const now = Date.now();
+  // Debounce: ignore identical code scanned within 4 seconds
+  if(decodedText === lastScanCode && (now - lastScanTime) < 4000) return;
+  lastScanCode = decodedText;
+  lastScanTime = now;
+
+  if(!selectedStatus){
+    document.getElementById("scan-hint").textContent = "الرجاء اختيار حضور أو انصراف أولاً";
+    return;
+  }
+
+  const teacher = teachers.find(t => t.id === decodedText);
+  if(!teacher){
+    document.getElementById("scan-hint").textContent = "رمز غير معروف — تأكد من إضافة الأستاذ أولاً";
+    return;
+  }
+
+  recordAttendance(teacher);
+}
+
+async function recordAttendance(teacher){
+  const entry = {
+    teacherId: teacher.id,
+    name: teacher.name,
+    status: selectedStatus,
+    timestamp: new Date().toISOString()
+  };
+  attendanceLog.unshift(entry);
+  await saveLog();
+  renderRecentScans();
+  document.getElementById("scan-hint").textContent =
+    "تم تسجيل " + (selectedStatus==="in" ? "حضور" : "انصراف") + ": " + teacher.name;
+}
+
+// ---- Manual test-scan (since camera may not work in preview) ----
+function buildManualTestControls(){
+  const container = document.createElement("div");
+  container.style.marginTop = "10px";
+  container.innerHTML = '<div class="hint">للتجربة بدون كاميرا: اختر أستاذاً لمحاكاة المسح</div>';
+  const select = document.createElement("select");
+  select.style.cssText = "width:100%;padding:10px;border-radius:8px;border:1px solid var(--line);margin-top:6px;font-family:inherit;";
+  select.id = "manual-test-select";
+  container.appendChild(select);
+  const btn = document.createElement("button");
+  btn.textContent = "محاكاة المسح";
+  btn.className = "primary-btn";
+  btn.style.marginTop = "8px";
+  btn.style.width = "100%";
+  btn.addEventListener("click", ()=>{
+    const id = select.value;
+    const teacher = teachers.find(t=>t.id===id);
+    if(teacher) onScanSuccess(teacher.id);
+  });
+  container.appendChild(btn);
+  document.querySelector(".scan-frame").appendChild(container);
+  refreshManualSelect();
+}
+
+function refreshManualSelect(){
+  const select = document.getElementById("manual-test-select");
+  if(!select) return;
+  select.innerHTML = teachers.map(t=>`<option value="${t.id}">${t.name}</option>`).join("") ||
+    '<option value="">لا يوجد أساتذة بعد</option>';
+}
+
+// ---- Rendering ----
+function renderRecentScans(){
+  const container = document.getElementById("recent-scans");
+  const recent = attendanceLog.slice(0, 8);
+  if(!recent.length){
+    container.innerHTML = '<div class="empty">لا توجد عمليات مسح بعد</div>';
+    return;
+  }
+  container.innerHTML = recent.map(entry => logCardHTML(entry)).join("");
+}
+
+function renderFullLog(){
+  const container = document.getElementById("full-log");
+  if(!attendanceLog.length){
+    container.innerHTML = '<div class="empty">السجل فارغ</div>';
+    return;
+  }
+  container.innerHTML = attendanceLog.map(entry => logCardHTML(entry)).join("");
+}
+
+function logCardHTML(entry){
+  const d = new Date(entry.timestamp);
+  const timeStr = d.toLocaleDateString("ar-EG") + " — " + d.toLocaleTimeString("ar-EG", {hour:"2-digit", minute:"2-digit"});
+  const badgeText = entry.status === "in" ? "حضور" : "انصراف";
+  return `<div class="log-card">
+    <div>
+      <div class="name">${entry.name}</div>
+      <div class="time">${timeStr}</div>
+    </div>
+    <div class="badge ${entry.status}">${badgeText}</div>
+  </div>`;
+}
+
+function renderTeacherList(){
+  const container = document.getElementById("teacher-list");
+  if(!teachers.length){
+    container.innerHTML = '<div class="empty">لم تتم إضافة أي أستاذ بعد</div>';
+    return;
+  }
+  container.innerHTML = "";
+  teachers.forEach(t=>{
+    const card = document.createElement("div");
+    card.className = "teacher-card";
+    const qrBox = document.createElement("div");
+    qrBox.className = "qr-box";
+    card.appendChild(qrBox);
+    const info = document.createElement("div");
+    info.className = "info";
+    info.innerHTML = `<div class="name">${t.name}</div><div class="code">${t.id}</div>`;
+    card.appendChild(info);
+    const removeBtn = document.createElement("button");
+    removeBtn.className = "remove";
+    removeBtn.textContent = "حذف";
+    removeBtn.addEventListener("click", ()=>removeTeacher(t.id));
+    card.appendChild(removeBtn);
+    container.appendChild(card);
+    new QRCode(qrBox, { text: t.id, width: 64, height: 64 });
+  });
+}
+
+// ---- Teacher management ----
+document.getElementById("add-teacher-btn").addEventListener("click", addTeacher);
+document.getElementById("teacher-name-input").addEventListener("keydown", e=>{
+  if(e.key === "Enter") addTeacher();
+});
+
+async function addTeacher(){
+  const input = document.getElementById("teacher-name-input");
+  const name = input.value.trim();
+  if(!name) return;
+  const id = "T-" + Date.now().toString(36).toUpperCase();
+  teachers.push({ id, name });
+  await saveTeachers();
+  input.value = "";
+  renderTeacherList();
+  refreshManualSelect();
+}
+
+async function removeTeacher(id){
+  teachers = teachers.filter(t=>t.id !== id);
+  await saveTeachers();
+  renderTeacherList();
+  refreshManualSelect();
+}
+
+// ---- Print QR sheet ----
+document.getElementById("print-codes-btn").addEventListener("click", printAllCodes);
+
+function printAllCodes(){
+  const sheet = document.getElementById("print-sheet");
+  sheet.className = "";
+  sheet.innerHTML = "";
+  if(!teachers.length){
+    alert("لا يوجد أساتذة لطباعة رموزهم بعد");
+    return;
+  }
+  teachers.forEach(t=>{
+    const card = document.createElement("div");
+    card.className = "print-card";
+    const qrBox = document.createElement("div");
+    card.appendChild(qrBox);
+    const label = document.createElement("div");
+    label.className = "name";
+    label.textContent = t.name;
+    card.appendChild(label);
+    const code = document.createElement("div");
+    code.className = "code";
+    code.textContent = t.id;
+    card.appendChild(code);
+    sheet.appendChild(card);
+    new QRCode(qrBox, { text: t.id, width: 100, height: 100 });
+  });
+  setTimeout(()=>window.print(), 150);
+}
+
+// ---- Export as PDF (via browser print -> Save as PDF) ----
+document.getElementById("export-pdf-btn").addEventListener("click", exportPDF);
+
+function exportPDF(){
+  if(!attendanceLog.length){
+    alert("السجل فارغ، لا يوجد شيء لتصديره");
+    return;
+  }
+  const sheet = document.getElementById("print-sheet");
+  sheet.className = "log-mode";
+  const rows = attendanceLog.map(e=>{
+    const d = new Date(e.timestamp);
+    const dateStr = d.toLocaleDateString("ar-EG");
+    const timeStr = d.toLocaleTimeString("ar-EG", {hour:"2-digit", minute:"2-digit"});
+    const statusText = e.status === "in" ? "حضور" : "انصراف";
+    return `<tr><td>${e.name}</td><td>${statusText}</td><td>${dateStr}</td><td>${timeStr}</td></tr>`;
+  }).join("");
+  sheet.innerHTML = `
+    <h2>سجل حضور وانصراف الأساتذة</h2>
+    <table>
+      <thead><tr><th>الاسم</th><th>الحالة</th><th>التاريخ</th><th>الوقت</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+  `;
+  setTimeout(()=>{
+    window.print();
+    sheet.className = "";
+  }, 150);
+}
+
+// ---- Export / clear ----
+document.getElementById("export-csv-btn").addEventListener("click", exportCSV);
+document.getElementById("clear-log-btn").addEventListener("click", async ()=>{
+  if(!confirm("هل تريد مسح كل سجل الحضور؟")) return;
+  attendanceLog = [];
+  await saveLog();
+  renderFullLog();
+  renderRecentScans();
+});
+
+function exportCSV(){
+  const header = "الاسم,الحالة,التاريخ والوقت\n";
+  const rows = attendanceLog.map(e=>{
+    const status = e.status === "in" ? "حضور" : "انصراف";
+    return `"${e.name}","${status}","${new Date(e.timestamp).toLocaleString("ar-EG")}"`;
+  }).join("\n");
+  const csv = "\uFEFF" + header + rows;
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "attendance-log.csv";
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ---- Init ----
+(async function init(){
+  await loadState();
+  renderRecentScans();
+  buildManualTestControls();
+  initScanner();
+})();
+</script>
+
+</body>
+</html>
